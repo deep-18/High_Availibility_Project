@@ -53,6 +53,6 @@
     - name: Check docker version
       command: docker --version
     - name: Create Image
-      command: docker image -t image ../To-Do-App-in-React-JS
+      command: docker image -t image ../ReactApp
     - name: Run Container
       command: docker run -p 80:3000 image
