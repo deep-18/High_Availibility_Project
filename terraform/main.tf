@@ -85,7 +85,7 @@ resource "aws_instance" "demo_instance_public" {
   instance_type = "t3.micro"
   region = "us-east-1"
   associate_public_ip_address = true
-  security_groups = [ aws_security_group.sg-1 ]
+  vpc_security_group_ids  = [ aws_security_group.sg-1.id ]
 
 
   tags = {
@@ -103,7 +103,7 @@ resource "aws_instance" "demo_instance_private" {
 
 resource "aws_security_group" "sg-1" {
   # ... other configuration ...
-
+  vpc_id = aws_vpc.main.id
   egress {
     from_port        = 0
     to_port          = 0
