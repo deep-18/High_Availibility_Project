@@ -84,6 +84,8 @@ resource "aws_instance" "demo_instance_public" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t3.micro"
   region = "us-east-1"
+  associate_public_ip_address = true
+
 
   tags = {
     Name = "Main"
