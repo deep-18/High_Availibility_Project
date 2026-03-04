@@ -79,7 +79,7 @@ data "aws_ami" "ubuntu" {
 }
 
 resource "aws_instance" "demo_instance_public" {
-  subnet_id = aws_subnet.main_public.id
+  subnet_id     = aws_subnet.main_public.id
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t3.micro"
   region = "us-east-1"
@@ -89,7 +89,7 @@ resource "aws_instance" "demo_instance_public" {
   }
 }
 resource "ec2_instance" "demo_instance_private" {
-  subnet_id = aws_subnet.main_private.id
+  subnet_id     = aws_subnet.main_private.id
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t3.micro"
   tags = {
