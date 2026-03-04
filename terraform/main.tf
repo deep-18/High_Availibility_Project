@@ -88,7 +88,7 @@ resource "aws_instance" "demo_instance_public" {
     Name = "Main"
   }
 }
-resource "ec2_instance" "demo_instance_private" {
+resource "aws_instance" "demo_instance_private" {
   subnet_id     = aws_subnet.main_private.id
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t3.micro"
