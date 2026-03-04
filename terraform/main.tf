@@ -45,7 +45,7 @@ resource "aws_internet_gateway" "igw" {
 }
 
 resource "aws_route_table" "public_route" {
-  vpc_id = aws_vpc.example.id
+  vpc_id = aws_vpc.main.id
 
   tags = {
     Name = "Main"
