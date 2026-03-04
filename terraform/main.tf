@@ -85,6 +85,7 @@ resource "aws_instance" "demo_instance_public" {
   instance_type = "t3.micro"
   region = "us-east-1"
   associate_public_ip_address = true
+  security_groups = [ aws_security_group.sg-1 ]
 
 
   tags = {
@@ -98,4 +99,22 @@ resource "aws_instance" "demo_instance_private" {
   tags = {
     Name = "Main"
   }
+}
+
+resource "aws_security_group" "sg-1" {
+  # ... other configuration ...
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+  
 }
