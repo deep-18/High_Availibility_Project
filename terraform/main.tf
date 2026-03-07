@@ -27,94 +27,136 @@ resource "aws_subnet" "main_public" {
 }
 
 
-resource "aws_subnet" "main_private" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.2.0/24"
-
+resource "aws_s3_bucket" "bucket_main" {
+  bucket = "options-trading-bucket-main"
   tags = {
-    Name = "Main"
+    Name        = "My bucket"
+    Environment = "Dev"
   }
 }
 
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-
+resource "aws_s3_bucket" "bucket_secondary" {
+  bucket = "options-trading-bucket-secondary"
   tags = {
-    Name = "Main"
+    Name        = "My bucket"
+    Environment = "Dev"
   }
 }
 
-resource "aws_route_table" "public_route" {
-  vpc_id = aws_vpc.main.id
+resource "aws_s3_bucket_public_access_block" "example_main" {
+  bucket = aws_s3_bucket.bucket_main.id
 
-  tags = {
-    Name = "Main"
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+resource "aws_s3_bucket_public_access_block" "example_secondary" {
+  bucket = aws_s3_bucket.bucket_secondary.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_versioning" "versioning_configuration_main" {
+  bucket = aws_s3_bucket.bucket_main.id
+
+  versioning_configuration {
+    status = "Enabled"
   }
 }
 
-resource "aws_route" "r1" {
-  route_table_id            = aws_route_table.public_route.id
-  destination_cidr_block    = "0.0.0.0/0"
-  gateway_id = aws_internet_gateway.igw.id
-}
+resource "aws_s3_bucket_versioning" "versioning_configuration_secondary" {
+  bucket = aws_s3_bucket.bucket_secondary.id
 
-resource "aws_route_table_association" "a" {
-  subnet_id      = aws_subnet.main_public.id
-  route_table_id = aws_route_table.public_route.id
-}
-
-data "aws_ami" "ubuntu" {
-  most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  owners = ["099720109477"] # Canonical
-}
-
-resource "aws_instance" "demo_instance_public" {
-  subnet_id     = aws_subnet.main_public.id
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = "t3.micro"
-  region = "us-east-1"
-  associate_public_ip_address = true
-  vpc_security_group_ids  = [ aws_security_group.sg-1.id ]
-
-
-  tags = {
-    Name = "Main"
-  }
-}
-resource "aws_instance" "demo_instance_private" {
-  subnet_id     = aws_subnet.main_private.id
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = "t3.micro"
-  tags = {
-    Name = "Main"
+  versioning_configuration {
+    status = "Enabled"
   }
 }
 
-resource "aws_security_group" "sg-1" {
-  # ... other configuration ...
-  vpc_id = aws_vpc.main.id
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
+data "aws_iam_policy_document" "assume_role" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["s3.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
   }
-  ingress {
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
+}
+
+resource "aws_iam_role" "replication" {
+  name               = "tf-iam-role-replication-12345"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+
+data "aws_iam_policy_document" "replication" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "s3:GetReplicationConfiguration",
+      "s3:ListBucket",
+    ]
+
+    resources = [aws_s3_bucket.bucket_main.arn]
   }
-  
+
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObjectVersionForReplication",
+      "s3:GetObjectVersionAcl",
+      "s3:GetObjectVersionTagging",
+    ]
+
+    resources = ["${aaws_s3_bucket.bucket_main.arn}/*"]
+  }
+
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "s3:ReplicateObject",
+      "s3:ReplicateDelete",
+      "s3:ReplicateTags",
+    ]
+
+    resources = ["${aws_s3_bucket.bucket_secondary.arn}/*"]
+  }
+}
+
+resource "aws_iam_policy" "replication" {
+  name   = "tf-iam-role-policy-replication-12345"
+  policy = data.aws_iam_policy_document.replication.json
+}
+
+resource "aws_iam_role_policy_attachment" "replication" {
+  role       = aws_iam_role.replication.name
+  policy_arn = aws_iam_policy.replication.arn
+}
+
+
+resource "aws_s3_bucket_replication_configuration" "east_to_west" {
+  # Must have bucket versioning enabled first
+  depends_on = [aws_s3_bucket_versioning.versioning_configuration_main, aws_s3_bucket_versioning.versioning_configuration_secondary]
+
+  role   = aws_iam_role.replication.arn
+  bucket = aws_s3_bucket.bucket_main.id
+
+  rule {
+    id = "foobar"
+    status = "Enabled"
+    filter {}
+    destination {
+      bucket        = aws_s3_bucket.bucket_secondary.arn
+      storage_class = "STANDARD"
+    }
+  }
 }
