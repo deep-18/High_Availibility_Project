@@ -128,11 +128,14 @@ resource "aws_s3_bucket_replication_configuration" "east_to_west" {
 
   role   = aws_iam_role.replication.arn
   bucket = aws_s3_bucket.bucket_main.id
-
+  
   rule {
     id = "foobar"
     status = "Enabled"
     filter {}
+    delete_marker_replication {
+      status = "Enabled"
+    }
     destination {
       bucket        = aws_s3_bucket.bucket_secondary.arn
       storage_class = "STANDARD"
