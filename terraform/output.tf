@@ -1,6 +1,6 @@
-output "instance_ip" {
-    value = aws_instance.demo_instance_public.id
+output "s3_bucket" {
+    value = aws_s3_bucket.bucket_main.arn
 }
 output "private_instance_ip" {
-    value = aws_instance.demo_instance_public.id
+    value = aws_s3_bucket.bucket_secondary.arn
 }
